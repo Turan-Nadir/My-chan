@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat <%= topic.topic %></title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        /* Set a light chocolate background color for the body */
+        body {
+            background-color: #D2B48C;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        /* Style the navbar */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+
+        nav a:hover {
+            color: #4CAF50;
+        }
+
+        /* Center the content */
+        .container {
+            text-align: center;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            margin: 20px auto;
+        }
+
+        /* Style the message container */
+        .message-container {
+            max-height: 600px;
+            overflow-y: auto;
+            margin: 20px 0;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Style the messages */
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+
+        .sender {
+            background-color: #4CAF50;
+            color: white;
+            text-align: right;
+        }
+
+        .receiver {
+            background-color: #f1f1f1;
+            text-align: left;
+        }
+
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+            display: block;
+            margin-top: 5px;
+        }
+
+        /* Style the form elements */
+        form {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        /* Style the user size */
+        #userSize {
+            text-align: center;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/dashboard">Go back</a>
+        <a href="/logout">Log out</a>
+    </nav>
+    <div class="container">
+        <div class="message-container">
+            <ul id="showMessages"></ul>
+        </div>
+        <form id="message-form">
+            <input placeholder="Type your message:" type="text" id="text" name="text" required>
+            <button type="submit">Send</button>
+        </form>
+        <p id="userSize">Number of users: </p>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = io();
+            const userSize = document.getElementById('userSize');
+            const messageForm = document.getElementById('message-form');
+            const messageInput = document.getElementById('text');
+            const showMessages = document.getElementById('showMessages');
+            const messageContainer = document.querySelector('.message-container');
+
+            // Function to format the timestamp to show only hours and minutes
+            function formatTimestamp(timestamp) {
+                const date = new Date(timestamp);
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            // Emit event to fetch chat messages when user connects
+            socket.emit('chatUser', {
+                sender: '<%= sender %>',
+                topicId: '<%= topic._id %>'
+            });
+
+            // Update user count
+            socket.on('userSize', (size) => {
+                userSize.textContent = `Number of users: ${size}`;
+            });
+
+            // Display messages
+            socket.on('messages', (messages) => {
+                showMessages.innerHTML = ''; // Clear the existing list
+                messages.forEach(message => {
+                    const li = document.createElement('li');
+                    li.textContent = `${message.sender === '<%= sender %>' ? 'me' : message.sender}: ${message.text}`;
+                    li.classList.add(message.sender === '<%= sender %>' ? 'sender' : 'receiver');
+
+                    const timestamp = document.createElement('span');
+                    timestamp.textContent = formatTimestamp(message.timestamp);
+                    timestamp.classList.add('timestamp');
+                    li.appendChild(timestamp);
+
+                    showMessages.appendChild(li);
+                });
+
+                // Scroll to the bottom
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+            });
+
+            // Handle form submission to send a new message
+            messageForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const text = messageInput.value;
+                socket.emit('message', {
+                    sender: '<%= sender %>',
+                    topicId: '<%= topic._id %>',
+                    text: text
+                });
+
+                // Clear input after sending
+                messageInput.value = '';
+            });
+        });
+    </script>
+</body>
+</html>
